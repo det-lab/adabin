@@ -74,5 +74,102 @@ def recon_maps(signal, noise, maps):
         n = np.where(maps == i, n_list[i], n)
     return s, n
 
+#def hist_2d(data, n, min_count = 10):
+#    hist, x_edges, y_edges = np.histogram2d(data, bins=2**n)
+#    bins_list = []
+
+    # loop over the matrix, tiling 2**n elements together, until we reach the size of the matrix
+#    for i in range(0, n):
+        # get the indices and sum of each 2**n "tile" of the matrix
+
+        # find out which tiles satisfy the count requirement and add the indices of those tiles to the nth bins_list
+        # the indices should not be flattened; we need to retrieve the tile edges later
+        # we should only add the tile if at least one of its indices is not present in bins_list
+
+        # update the previous n-1 bins_list entries so they don't contain tiles that contain the indices
+        # that are contained in the n bins_list
+        # (each index should only appear once in bins_list)
+
+def get_block_sums_and_indices(matrix, block_size):
+    """
+    Divide the input matrix into non-overlapping blocks of shape (block_size, block_size),
+    and return a list of:
+      - The indices (i, j) of the original matrix elements in each block.
+      - The sum of elements in each block.
+
+    Parameters
+    ----------
+    matrix : 2D np.array
+        The input matrix to be divided.
+    block_size : int
+        The size of each square block.
+
+    Returns
+    -------
+    block_indices_list : list of lists of tuples
+        Each inner list contains (i, j) indices for one block.
+    block_sums_list : list of floats
+        Each value is the sum of one block.
+    """
+    h, w = matrix.shape
+    block_indices_list = []
+    block_sums_list = []
+
+    for i in range(0, h, block_size):
+        for j in range(0, w, block_size):
+            if i + block_size <= h and j + block_size <= w:
+                indices = [(i + di, j + dj) for di in range(block_size) for dj in range(block_size)]
+                block_sum = sum(matrix[idx] for idx in indices)
+                block_indices_list.append(indices)
+                block_sums_list.append(block_sum)
+
+    return block_indices_list, block_sums_list
+
+def adaptive_binning(matrix, threshold):
+    """
+    Perform adaptive binning on a matrix. At each level, larger tiles (2^n x 2^n)
+    are tested, and if their sum exceeds the threshold, they're added to the binning.
+    Any overlapping smaller tiles are removed.
+
+    Parameters
+    ----------
+    matrix : 2D np.array
+        The matrix to bin.
+    threshold : float
+        The minimum sum required for a tile to be accepted.
+
+    Returns
+    -------
+    bins_list : list of lists
+        Each list contains the accepted tile indices at a binning level.
+    """
+    bins_list = []
+    assigned_indices = set()
+    max_power = int(np.log2(matrix.shape[0]))
+
+    for n in range(max_power + 1):
+        block_size = 2 ** n
+        block_indices_list, block_sums_list = get_block_sums_and_indices(matrix, block_size)
+        current_bins = []
+        current_indices = set()
+
+        for block_indices, block_sum in zip(block_indices_list, block_sums_list):
+            if all(idx in assigned_indices for idx in block_indices):
+                continue
+            if block_sum >= threshold:
+                current_bins.append(block_indices)
+                current_indices.update(block_indices)
+                assigned_indices.update(block_indices)
+
+        # Remove overlapping tiles from previous levels
+        for prev_level in range(n):
+            bins_list[prev_level] = [
+                tile for tile in bins_list[prev_level]
+                if all(idx not in current_indices for idx in tile)
+            ]
+
+        bins_list.append(current_bins)
+
+    return bins_list
 
 
