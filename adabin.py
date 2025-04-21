@@ -172,4 +172,77 @@ def adaptive_binning(matrix, threshold):
 
     return bins_list
 
+import numpy as np
+
+def get_block_info(matrix, row, col, block_size, used):
+    """
+    Extract indices and sum of a block from a matrix, excluding used indices.
+
+    Parameters
+    ----------
+    matrix : np.ndarray
+        Input 2D matrix.
+    row, col : int
+        Starting row and column for the block.
+    block_size : int
+        Size of the block.
+    used : set of tuple
+        Set of already used indices to exclude.
+
+    Returns
+    -------
+    indices : list of tuple
+        List of unbinned (row, col) indices in the block.
+    val_sum : float
+        Sum of the values at the selected indices.
+    """
+    shape = matrix.shape
+    indices = []
+    val_sum = 0
+    for i in range(row, min(row + block_size, shape[0])):
+        for j in range(col, min(col + block_size, shape[1])):
+            idx = (i, j)
+            if idx not in used:
+                val_sum += matrix[i, j]
+                indices.append(idx)
+    return indices, val_sum
+
+def adaptive_binning_resolution_preserving(matrix, threshold=1.5, block_sizes=[1, 2, 4]):
+    """
+    Adaptive binning on a 2D matrix, forming tiles of increasing size
+    and binning them if their unbinned sum exceeds the threshold or
+    if it's the final binning level.
+
+    Parameters
+    ----------
+    matrix : np.ndarray
+        Input 2D matrix.
+    threshold : float
+        Minimum sum required for a tile to be accepted.
+    block_sizes : list of int
+        Block sizes to try (in pixels).
+
+    Returns
+    -------
+    bins_by_level : list of list of list of tuple
+        List for each level containing accepted tile index lists.
+    """
+    shape = matrix.shape
+    bins_by_level = []
+    used_indices = set()
+
+    for level, block_size in enumerate(block_sizes):
+        new_bin = []
+        for i in range(0, shape[0], block_size):
+            for j in range(0, shape[1], block_size):
+                indices, val_sum = get_block_info(matrix, i, j, block_size, used_indices)
+                if not indices:
+                    continue
+                if val_sum >= threshold or level == len(block_sizes) - 1:
+                    new_bin.append(indices)
+                    used_indices.update(indices)
+        bins_by_level.append(new_bin)
+
+    return bins_by_level
+
 
