@@ -207,7 +207,7 @@ def get_block_info(matrix, row, col, block_size, used):
                 indices.append(idx)
     return indices, val_sum
 
-def adaptive_binning_resolution_preserving(matrix, threshold=1.5, block_sizes=[1, 2, 4]):
+def adaptive_binning_resolution_preserving(matrix, threshold=10, block_sizes=[1, 2, 4]):
     """
     Adaptive binning on a 2D matrix, forming tiles of increasing size
     and binning them if their unbinned sum exceeds the threshold or
